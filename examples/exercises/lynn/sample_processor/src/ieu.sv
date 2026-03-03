@@ -27,10 +27,19 @@ module ieu(
     logic        RegWrite;
     logic [2:0]  ImmSrc;
 
+    logic        CSREn;
+    logic [31:0] CSRReadData;
+
+    logic        MulOp;
+    logic [1:0]  MulSel;
+
+    logic IsAdd, IsBranch, IsBranchTaken, IsLoad, IsStore, IsJump, IsCSR, IsALUImm;
+
     controller c(
         .Op(Instr[6:0]),
         .Funct3(Instr[14:12]),
         .Funct7b5(Instr[30]),
+        .Funct7(Instr[31:25]),
         .Eq, .LT, .LTU,
         .PCSrc,
         .ALUResultSrc,
@@ -41,7 +50,18 @@ module ieu(
         .RegWrite,
         .W64,
         .ALUSelect,
-        .SubArith
+        .SubArith,
+        .CSREn,
+        .MulOp,
+        .MulSel,
+        .IsAdd,
+        .IsBranch,
+        .IsBranchTaken,
+        .IsLoad,
+        .IsStore,
+        .IsJump,
+        .IsCSR,
+        .IsALUImm
     );
 
     datapath dp(
@@ -53,13 +73,36 @@ module ieu(
         .SubArith,
         .ALUResultSrc,
         .ResultSrc,
+        .MulOp,
+        .MulSel,
         .Eq, .LT, .LTU,
         .PC, .PCPlus4,
         .Instr,
         .IEUAdr,
         .WriteData,
         .LoadResult,
+        .CSRResult(CSRReadData),
         .Result
     );
+
+    logic InstrRetired;
+    assign InstrRetired = ~reset & (Instr != 32'b0);
+
+    csr csr_unit(
+        .clk          (clk),
+        .reset        (reset),
+        .InstrRetired (InstrRetired),
+        .IsAdd        (IsAdd        & InstrRetired),
+        .IsBranch     (IsBranch     & InstrRetired),
+        .IsBranchTaken(IsBranchTaken & InstrRetired),
+        .IsLoad       (IsLoad       & InstrRetired),
+        .IsStore      (IsStore      & InstrRetired),
+        .IsJump       (IsJump       & InstrRetired),
+        .IsCSR        (IsCSR        & InstrRetired),
+        .IsALUImm     (IsALUImm     & InstrRetired),
+        .CSRAdr       (Instr[31:20]),
+        .CSRReadData  (CSRReadData)
+    );
+
 
 endmodule

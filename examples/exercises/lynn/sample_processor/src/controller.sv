@@ -4,6 +4,7 @@ module controller (
         input  logic [6:0]  Op,
         input  logic [2:0]  Funct3,
         input  logic        Funct7b5,
+        input  logic [6:0]  Funct7,
         input  logic        Eq, LT, LTU,
 
         output logic        PCSrc,
@@ -15,10 +16,24 @@ module controller (
         output logic        RegWrite,
         output logic        W64,
         output logic [2:0]  ALUSelect,
-        output logic        SubArith
+        output logic        SubArith,
+        output logic        CSREn,
+        output logic        MulOp,
+        output logic [1:0]  MulSel,
+
+        output logic        IsAdd,          // hpm3
+        output logic        IsBranch,       // hpm4
+        output logic        IsBranchTaken,  // hpm5
+        output logic        IsLoad,         // hpm6
+        output logic        IsStore,        // hpm7
+        output logic        IsJump,         // hpm8
+        output logic        IsCSR,          // hpm9
+        output logic        IsALUImm        // hpm10
     );
 
     logic Branch, Jump, ALUOp;
+    logic IsMul;
+    assign IsMul = (Op == 7'h33) & (Funct7 == 7'h01);
 
    // Main Decoder
     always_comb begin
@@ -32,18 +47,30 @@ module controller (
         RegWrite         = 1'b0;
         MemRW            = 2'b00;
         W64              = 1'b0;
+        CSREn            = 1'b0;
+        IsLoad           = 1'b0;
+        IsStore         = 1'b0;
+        IsJump          = 1'b0;
+        IsCSR           = 1'b0;
+        IsALUImm        = 1'b0;
+
 
         case (Op)
             7'h33: begin // R-type
                 RegWrite     = 1'b1;
                 ALUSrc       = 2'b00;
                 ALUOp        = 1'b1;
+                if (IsMul) begin
+                    MulOp = 1'b1;
+                    MulSel = Funct3[1:0];
+                end
             end
             7'h13: begin // I-type ALU
                 RegWrite     = 1'b1;
                 ALUSrc       = 2'b01;
                 ImmSrc       = 3'b000;
                 ALUOp        = 1'b1;
+                IsALUImm     = 1'b1;
             end
             7'h03: begin // loads
                 RegWrite     = 1'b1;
@@ -51,11 +78,13 @@ module controller (
                 ImmSrc       = 3'b000;
                 MemRW        = 2'b10;   // MemRead
                 ResultSrc    = 2'b10;
+                IsLoad       = 1'b1;
             end
             7'h23: begin // stores
                 ALUSrc       = 2'b01;
                 ImmSrc       = 3'b001;
                 MemRW        = 2'b01;   // MemWrite
+                IsStore      = 1'b1;
             end
             7'h63: begin // branches
                 Branch       = 1'b1;
@@ -68,6 +97,7 @@ module controller (
                 ImmSrc       = 3'b011;
                 ResultSrc    = 2'b01;
                 RegWrite     = 1'b1;
+                IsJump       = 1'b1;
             end
             7'h67: begin // jalr
                 Jump         = 1'b1;
@@ -75,6 +105,7 @@ module controller (
                 ImmSrc       = 3'b000;
                 ResultSrc    = 2'b01;
                 RegWrite     = 1'b1;
+                IsJump       = 1'b1;
             end
             7'h37: begin // lui
                 ALUSrc       = 2'b01;
@@ -86,6 +117,14 @@ module controller (
                 ALUSrc       = 2'b11;
                 ImmSrc       = 3'b100;
                 RegWrite     = 1'b1;
+            end
+            7'h73: begin // Zicsr
+                if (Funct3 == 3'b010) begin
+                    RegWrite  = 1'b1;
+                    ResultSrc = 2'b11;
+                    CSREn     = 1'b1;
+                    IsCSR     = 1'b1;
+                end
             end
             default: begin
                 // all signals already defaulted to 0
@@ -131,5 +170,10 @@ module controller (
         endcase
 
     assign PCSrc = (Branch & BranchTaken) | Jump;
+
+    assign IsAdd = (Op == 7'h33 && Funct3 == 3'b000 && !Funct7b5) || (Op == 7'h13 && Funct3 == 3'b000);
+    assign IsBranch = Branch;
+    assign IsBranchTaken = Branch & BranchTaken;
+
 
 endmodule

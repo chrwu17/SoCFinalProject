@@ -11,12 +11,15 @@ module datapath(
         input  logic        SubArith,
         input  logic        ALUResultSrc,
         input  logic [1:0]  ResultSrc,
+        input  logic        MulOp,
+        input  logic [1:0]  MulSel,
         output logic        Eq, LT, LTU,
         input  logic [31:0] PC, PCPlus4,
         input  logic [31:0] Instr,
         output logic [31:0] IEUAdr,
         output logic [31:0] WriteData,
         input  logic [31:0] LoadResult,
+        input  logic [31:0] CSRResult,
         output logic [31:0] Result
     );
 
@@ -44,7 +47,7 @@ module datapath(
     mux2 #(32) srcbmux(R2, ImmExt, ALUSrc[0], SrcB);
 
     // ALU
-    alu alu(.SrcA, .SrcB, .ALUSelect, .SubArith, .ALUResult, .IEUAdr);
+    alu alu(.SrcA, .SrcB, .ALUSelect, .SubArith, .MulOp, .MulSel, .ALUResult, .IEUAdr);
 
     // IEUResult
     assign IEUResult = ALUResultSrc ? ImmExt : ALUResult;
@@ -55,6 +58,7 @@ module datapath(
             2'b00:   Result = IEUResult;   // normal
             2'b01:   Result = PCPlus4;     // jal/jalr return address
             2'b10:   Result = LoadResult;  // load
+            2'b11:   Result = CSRResult;
             default: Result = IEUResult;
         endcase
 
