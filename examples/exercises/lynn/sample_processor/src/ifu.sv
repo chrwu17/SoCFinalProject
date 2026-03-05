@@ -6,7 +6,6 @@ module ifu(
         input   logic           clk, reset,
         input   logic           PCSrc,
         input   logic [31:0]    IEUAdr,
-        input   logic [31:0]    entry_addr,
         output  logic [31:0]    PC, PCPlus4
     );
 
@@ -14,6 +13,16 @@ module ifu(
     logic [31:0] BranchTarget;
 
     assign BranchTarget = IEUAdr & 32'hFFFFFFFE;
+
+    logic [31:0] entry_addr;
+
+    initial begin
+        entry_addr = '0;
+
+        void'($value$plusargs("ENTRY_ADDR=%h", entry_addr));
+
+        $display("[TB] ENTRY_ADDR = 0x%h", entry_addr);
+    end
 
     always_ff @(posedge clk) begin
         if (reset)  PC <= entry_addr;

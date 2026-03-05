@@ -6,7 +6,6 @@
 
 module riscvsingle(
         input  logic        clk, reset,
-        input  logic [31:0] entry_addr,
         output logic [31:0] PC,
         input  logic [31:0] Instr,
         output logic [31:0] IEUAdr,
@@ -21,7 +20,7 @@ module riscvsingle(
     logic        PCSrc;
     logic [1:0]  MemRW;
 
-    ifu ifu(.clk, .reset, .PCSrc, .IEUAdr, .entry_addr, .PC, .PCPlus4);
+    ifu ifu(.clk, .reset, .PCSrc, .PC, .PCPlus4);
 
     ieu ieu(
         .clk, .reset, .Instr,
