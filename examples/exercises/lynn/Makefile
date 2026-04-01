@@ -12,7 +12,7 @@ XLEN 				?= 32
 PROCESSOR_DIR   	?= $(CURDIR)/sample_processor/src      # Directory containing all PROCESSOR RTL (will scan for .sv / .svh)
 INC_DIR       		?= $(CURDIR)/sample_processor/incdir/  # Optional directory for include files for RTL compilation (parameters)
 
-PROCESSOR_TOP 		?= riscvsingle # top-level module name
+PROCESSOR_TOP 		?= riscvpipelined # top-level module name
 PROCESSOR_CONFIG 	?= $(CURDIR)/sample_processor/config
 
 #--trace-all
