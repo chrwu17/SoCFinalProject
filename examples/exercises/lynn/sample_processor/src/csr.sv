@@ -1,7 +1,7 @@
 // csr.sv
-// Christian Wu
-// chrwu@g.hmc.edu
-// 03/02/2026
+// Christian Wu & Eastan Oo
+// chrwu@g.hmc.edu & eoo@g.hmc.edu
+// 03/31/2026
 
 
 module csr (
@@ -9,7 +9,7 @@ module csr (
     input  logic        reset,
 
     // Zicntr events
-    input  logic        InstrRetired,
+    input  logic        InstrRetiredW,
 
     // Zihpm events
     input  logic        IsAdd,          // hpm3: ADD or ADDI executed
@@ -35,7 +35,7 @@ module csr (
             instret_cnt <= 64'd0;
         end else begin
             cycle_cnt <= cycle_cnt + 1;
-            if (InstrRetired)
+            if (InstrRetiredW)
                 instret_cnt <= instret_cnt + 1;
         end
     end
@@ -45,17 +45,17 @@ module csr (
 
     always_ff @(posedge clk) begin
         if (reset) begin
-            hpm3  <= '0;  hpm4  <= '0;  hpm5  <= '0;  hpm6  <= '0;
-            hpm7  <= '0;  hpm8  <= '0;  hpm9  <= '0;  hpm10 <= '0;
+            hpm3  <= '0; hpm4  <= '0; hpm5  <= '0; hpm6  <= '0;
+            hpm7  <= '0; hpm8  <= '0; hpm9  <= '0; hpm10 <= '0;
         end else begin
-            if (IsAdd)         hpm3  <= hpm3  + 1;  // ADD / ADDI
-            if (IsBranch)      hpm4  <= hpm4  + 1;  // branches evaluated
-            if (IsBranchTaken) hpm5  <= hpm5  + 1;  // branches taken
-            if (IsLoad)        hpm6  <= hpm6  + 1;  // loads
-            if (IsStore)       hpm7  <= hpm7  + 1;  // stores
-            if (IsJump)        hpm8  <= hpm8  + 1;  // JAL / JALR
-            if (IsCSR)         hpm9  <= hpm9  + 1;  // CSR reads
-            if (IsALUImm)      hpm10 <= hpm10 + 1;  // I-type ALU (non-add)
+            if (IsAdd & InstrRetiredW)         hpm3  <= hpm3  + 1;
+            if (IsBranch & InstrRetiredW)      hpm4  <= hpm4  + 1;
+            if (IsBranchTaken & InstrRetiredW) hpm5  <= hpm5  + 1; 
+            if (IsLoad & InstrRetiredW)        hpm6  <= hpm6  + 1;
+            if (IsStore & InstrRetiredW)       hpm7  <= hpm7  + 1;
+            if (IsJump & InstrRetiredW)        hpm8  <= hpm8  + 1;
+            if (IsCSR & InstrRetiredW)         hpm9  <= hpm9  + 1;
+            if (IsALUImm & InstrRetiredW)      hpm10 <= hpm10 + 1;
         end
     end
 

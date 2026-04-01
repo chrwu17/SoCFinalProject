@@ -5,12 +5,11 @@ module controller (
         input  logic [2:0]  Funct3,
         input  logic        Funct7b5,
         input  logic [6:0]  Funct7,
-        input  logic        Eq, LT, LTU,
 
-        output logic        PCSrc,
         output logic        ALUResultSrc,
         output logic [1:0]  ResultSrc,
         output logic [1:0]  MemRW,
+        output logic        MemRead,
         output logic [1:0]  ALUSrc,
         output logic [2:0]  ImmSrc,
         output logic        RegWrite,
@@ -20,10 +19,11 @@ module controller (
         output logic        CSREn,
         output logic        MulOp,
         output logic [1:0]  MulSel,
+        output logic        Branch,
+        output logic        Jump,
 
         output logic        IsAdd,          // hpm3
         output logic        IsBranch,       // hpm4
-        output logic        IsBranchTaken,  // hpm5
         output logic        IsLoad,         // hpm6
         output logic        IsStore,        // hpm7
         output logic        IsJump,         // hpm8
@@ -31,7 +31,7 @@ module controller (
         output logic        IsALUImm        // hpm10
     );
 
-    logic Branch, Jump, ALUOp;
+    logic ALUOp;
     logic IsMul;
     assign IsMul = (Op == 7'h33) & (Funct7 == 7'h01);
 
@@ -46,6 +46,7 @@ module controller (
         ResultSrc        = 2'b00;
         RegWrite         = 1'b0;
         MemRW            = 2'b00;
+        MemRead          = 1'b0;
         W64              = 1'b0;
         CSREn            = 1'b0;
         MulOp            = 1'b0;
@@ -78,7 +79,8 @@ module controller (
                 RegWrite     = 1'b1;
                 ALUSrc       = 2'b01;
                 ImmSrc       = 3'b000;
-                MemRW        = 2'b10;   // MemRead
+                MemRW        = 2'b10; 
+                MemRead      = 1'b1;
                 ResultSrc    = 2'b10;
                 IsLoad       = 1'b1;
             end
@@ -157,25 +159,7 @@ module controller (
         end
     end
 
-    // Branch Logic
-    logic BranchTaken;
-
-    always_comb
-        case (Funct3)
-            3'b000: BranchTaken = Eq;
-            3'b001: BranchTaken = ~Eq;
-            3'b100: BranchTaken = LT;
-            3'b101: BranchTaken = ~LT;
-            3'b110: BranchTaken = LTU;
-            3'b111: BranchTaken = ~LTU;
-            default: BranchTaken = 1'b0;
-        endcase
-
-    assign PCSrc = (Branch & BranchTaken) | Jump;
-
     assign IsAdd = (Op == 7'h33 && Funct3 == 3'b000 && !Funct7b5) || (Op == 7'h13 && Funct3 == 3'b000);
     assign IsBranch = Branch;
-    assign IsBranchTaken = Branch & BranchTaken;
-
 
 endmodule
