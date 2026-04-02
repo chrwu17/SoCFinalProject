@@ -10,11 +10,11 @@ SYNTH_TECH 		?= sky130
 PROCESSOR_DIR   ?= $(CURDIR)/sample_processor/src
 INC_DIR       	?= $(CURDIR)/sample_processor/incdir
 
-SYNTH_TOP 		?= riscvsingle
+SYNTH_TOP 		?= riscvpipelined
 SYNTH_FILES 	?=
 LIB_FILES 		?=
 
-PROCESSOR_TOP 	?= riscvsingle
+PROCESSOR_TOP 	?= riscvpipelined
 
 SYNTH_MAKE_FLAGS 	?= \
 	OUTPUTBASEDIR=$(WORK_DIR) \

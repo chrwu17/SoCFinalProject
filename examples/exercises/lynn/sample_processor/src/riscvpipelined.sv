@@ -230,7 +230,7 @@ always_comb
  
 assign PCSrcE = (BranchE & BranchTakenE) | JumpE;
 
-assign PCTargetMuxE = (JumpE & ~ALUSrcE[1]) ? IEUAdrE : PCTargetE;
+assign PCTargetMuxE = (JumpE & ~ALUSrcE[1]) ? {IEUAdrE[31:1], 1'b0} : PCTargetE;
 
 
 // EX/MEM PIPELINE REGISTER
