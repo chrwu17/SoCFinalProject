@@ -17,10 +17,8 @@ module riscvpipelined (
     output logic [3:0]  WriteByteEn
 );
  
-
 // FETCH SIGNALS
 logic [31:0] PCF, PCPlus4F;
-
 
 // DECODE SIGNALS
 logic [31:0] InstrD, PCD, PCPlus4D;
@@ -32,6 +30,7 @@ logic [1:0]  ResultSrcD, MemRWD, ALUSrcD, MulSelD;
 logic [2:0]  ImmSrcD, ALUSelectD;
 logic        SubArithD;
 logic        IsAddD, IsBranchD, IsLoadD, IsStoreD, IsJumpD, IsCSRD, IsALUImmD;
+logic        ValidD;
  
 // EXECUTE SIGNALS
 logic [31:0] RD1E, RD2E, ImmExtE, PCE, PCPlus4E;
@@ -43,6 +42,7 @@ logic [1:0]  ResultSrcE, MemRWE, ALUSrcE, MulSelE;
 logic [2:0]  ALUSelectE;
 logic        SubArithE;
 logic        IsAddE, IsBranchE, IsLoadE, IsStoreE, IsJumpE, IsCSRE, IsALUImmE;
+logic        ValidE;
 logic [31:0] SrcAE, SrcBE;
 logic [31:0] ALUResultE, PCTargetE;
 logic [31:0] WriteDataE;
@@ -50,8 +50,8 @@ logic [31:0] PCTargetMuxE;
 logic        PCSrcE;
 logic        BranchTakenE;
 logic [1:0]  ForwardAE, ForwardBE;
+logic        CSRReadE;
  
-
 // MEMORY SIGNALS
 logic [31:0] ALUResultM, WriteDataM, PCPlus4M;
 logic [31:0] ForwardResultM;
@@ -62,8 +62,8 @@ logic        RegWriteM, MemReadM;
 logic [1:0]  ResultSrcM, MemRWM;
 logic        IsAddM, IsBranchM, IsBranchTakenM, IsLoadM, IsStoreM;
 logic        IsJumpM, IsCSRM, IsALUImmM;
+logic        ValidM;
  
-
 // WRITEBACK SIGNALS
 logic [31:0] ALUResultW, ReadDataW, PCPlus4W, ResultW;
 logic [4:0]  RdW;
@@ -73,6 +73,7 @@ logic [1:0]  ResultSrcW;
 logic        IsAddW, IsBranchW, IsBranchTakenW, IsLoadW, IsStoreW;
 logic        IsJumpW, IsCSRW, IsALUImmW;
 logic        InstrRetiredW;
+logic        ValidW;
  
 // HAZARD SIGNALS
 logic StallF, StallD, FlushD, FlushE;
@@ -80,7 +81,6 @@ logic StallF, StallD, FlushD, FlushE;
 // CSR read data
 logic [31:0] CSRReadDataW;
  
-
 // FETCH
 assign PC = PCF;
  
@@ -97,8 +97,8 @@ ifu ifu(
 flopenr #(32, 32'h00000013) IF_ID_Instr  (clk, reset | FlushD, ~StallD, Instr,    InstrD);
 flopenr #(32)               IF_ID_PC     (clk, reset | FlushD, ~StallD, PCF,      PCD);
 flopenr #(32)               IF_ID_PCPlus4(clk, reset | FlushD, ~StallD, PCPlus4F, PCPlus4D);
+flopenr #(1)                IF_ID_Valid  (clk, reset | FlushD, ~StallD, 1'b1,     ValidD);
  
-
 // DECODE
 assign Rs1D = InstrD[19:15];
 assign Rs2D = InstrD[24:20];
@@ -106,7 +106,7 @@ assign RdD  = InstrD[11:7];
 
 regfile rf(
     .clk,
-    .WE3  (RegWriteW),
+    .WE3  (RegWriteW & ValidW),
     .A1   (Rs1D),
     .A2   (Rs2D),
     .A3   (RdW),
@@ -122,34 +122,35 @@ extend ext(
 );
  
 controller ctrl(
-    .Op         (InstrD[6:0]),
-    .Funct3     (InstrD[14:12]),
-    .Funct7b5   (InstrD[30]),
-    .Funct7     (InstrD[31:25]),
+    .Op           (InstrD[6:0]),
+    .Funct3       (InstrD[14:12]),
+    .Funct7b5     (InstrD[30]),
+    .Funct7       (InstrD[31:25]),
     .ALUResultSrc (ALUResultSrcD),
-    .ResultSrc  (ResultSrcD),
-    .MemRW      (MemRWD),
-    .MemRead    (MemReadD),
-    .ALUSrc     (ALUSrcD),
-    .ImmSrc     (ImmSrcD),
-    .RegWrite   (RegWriteD),
-    .W64        (),             // unused in RV32
-    .ALUSelect  (ALUSelectD),
-    .SubArith   (SubArithD),
-    .CSREn      (CSREnD),
-    .MulOp      (MulOpD),
-    .MulSel     (MulSelD),
-    .Branch     (BranchD),
-    .Jump       (JumpD),
-    .IsAdd      (IsAddD),
-    .IsBranch   (IsBranchD),
-    .IsLoad     (IsLoadD),
-    .IsStore    (IsStoreD),
-    .IsJump     (IsJumpD),
-    .IsCSR      (IsCSRD),
-    .IsALUImm   (IsALUImmD)
+    .ResultSrc    (ResultSrcD),
+    .MemRW        (MemRWD),
+    .MemRead      (MemReadD),
+    .ALUSrc       (ALUSrcD),
+    .ImmSrc       (ImmSrcD),
+    .RegWrite     (RegWriteD),
+    .W64          (),
+    .ALUSelect    (ALUSelectD),
+    .SubArith     (SubArithD),
+    .CSREn        (CSREnD),
+    .MulOp        (MulOpD),
+    .MulSel       (MulSelD),
+    .Branch       (BranchD),
+    .Jump         (JumpD),
+    .IsAdd        (IsAddD),
+    .IsBranch     (IsBranchD),
+    .IsLoad       (IsLoadD),
+    .IsStore      (IsStoreD),
+    .IsJump       (IsJumpD),
+    .IsCSR        (IsCSRD),
+    .IsALUImm     (IsALUImmD)
 );
 
+flopenr #(1)  ID_EX_Valid       (clk, reset | FlushE, 1'b1, ValidD,        ValidE);
 flopenr #(1)  ID_EX_RegWrite    (clk, reset | FlushE, 1'b1, RegWriteD,     RegWriteE);
 flopenr #(1)  ID_EX_MemRead     (clk, reset | FlushE, 1'b1, MemReadD,      MemReadE);
 flopenr #(2)  ID_EX_MemRW       (clk, reset | FlushE, 1'b1, MemRWD,        MemRWE);
@@ -175,7 +176,6 @@ flopenr #(5)  ID_EX_Rs2         (clk, reset | FlushE, 1'b1, Rs2D,          Rs2E)
 flopenr #(5)  ID_EX_Rd          (clk, reset | FlushE, 1'b1, RdD,           RdE);
  
 flopenr #(3)  ID_EX_Funct3      (clk, reset | FlushE, 1'b1, InstrD[14:12], Funct3E);
- 
 flopenr #(12) ID_EX_CSRAdr      (clk, reset | FlushE, 1'b1, InstrD[31:20], CSRAdrE);
  
 flopenr #(1)  ID_EX_IsAdd       (clk, reset | FlushE, 1'b1, IsAddD,        IsAddE);
@@ -187,6 +187,8 @@ flopenr #(1)  ID_EX_IsCSR       (clk, reset | FlushE, 1'b1, IsCSRD,        IsCSR
 flopenr #(1)  ID_EX_IsALUImm    (clk, reset | FlushE, 1'b1, IsALUImmD,     IsALUImmE);
  
 // EXECUTE STAGE
+assign CSRReadE = ValidE && (ResultSrcE == 2'b11);
+
 mux3 #(32) ForwardMuxA(RD1E, ResultW, ForwardResultM, ForwardAE, SrcAE);
 mux3 #(32) ForwardMuxB(RD2E, ResultW, ForwardResultM, ForwardBE, WriteDataE);
 
@@ -229,22 +231,21 @@ always_comb
     endcase
  
 assign PCSrcE = (BranchE & BranchTakenE) | JumpE;
-
 assign PCTargetMuxE = (JumpE & ~ALUSrcE[1]) ? {IEUAdrE[31:1], 1'b0} : PCTargetE;
 
-
 // EX/MEM PIPELINE REGISTER
-flopr #(1)  EX_MEM_RegWrite   (clk, reset, RegWriteE,   RegWriteM);
-flopr #(1)  EX_MEM_MemRead    (clk, reset, MemReadE,    MemReadM);
-flopr #(2)  EX_MEM_MemRW      (clk, reset, MemRWE,      MemRWM);
-flopr #(2)  EX_MEM_ResultSrc  (clk, reset, ResultSrcE,  ResultSrcM);
+flopr #(1)  EX_MEM_Valid        (clk, reset, ValidE,        ValidM);
+flopr #(1)  EX_MEM_RegWrite     (clk, reset, RegWriteE,     RegWriteM);
+flopr #(1)  EX_MEM_MemRead      (clk, reset, MemReadE,      MemReadM);
+flopr #(2)  EX_MEM_MemRW        (clk, reset, MemRWE,        MemRWM);
+flopr #(2)  EX_MEM_ResultSrc    (clk, reset, ResultSrcE,    ResultSrcM);
  
-flopr #(32) EX_MEM_ALUResult  (clk, reset, ALUResultE,  ALUResultM);
-flopr #(32) EX_MEM_WriteData  (clk, reset, WriteDataE,  WriteDataM);
-flopr #(32) EX_MEM_PCPlus4    (clk, reset, PCPlus4E,    PCPlus4M);
-flopr #(5)  EX_MEM_Rd         (clk, reset, RdE,         RdM);
-flopr #(3)  EX_MEM_Funct3     (clk, reset, Funct3E,     Funct3M);
-flopr #(12) EX_MEM_CSRAdr     (clk, reset, CSRAdrE,     CSRAdrM);
+flopr #(32) EX_MEM_ALUResult    (clk, reset, ALUResultE,    ALUResultM);
+flopr #(32) EX_MEM_WriteData    (clk, reset, WriteDataE,    WriteDataM);
+flopr #(32) EX_MEM_PCPlus4      (clk, reset, PCPlus4E,      PCPlus4M);
+flopr #(5)  EX_MEM_Rd           (clk, reset, RdE,           RdM);
+flopr #(3)  EX_MEM_Funct3       (clk, reset, Funct3E,       Funct3M);
+flopr #(12) EX_MEM_CSRAdr       (clk, reset, CSRAdrE,       CSRAdrM);
  
 flopr #(1)  EX_MEM_IsAdd        (clk, reset, IsAddE,        IsAddM);
 flopr #(1)  EX_MEM_IsBranch     (clk, reset, IsBranchE,     IsBranchM);
@@ -254,9 +255,6 @@ flopr #(1)  EX_MEM_IsStore      (clk, reset, IsStoreE,      IsStoreM);
 flopr #(1)  EX_MEM_IsJump       (clk, reset, IsJumpE,       IsJumpM);
 flopr #(1)  EX_MEM_IsCSR        (clk, reset, IsCSRE,        IsCSRM);
 flopr #(1)  EX_MEM_IsALUImm     (clk, reset, IsALUImmE,     IsALUImmM);
-
-logic CSRReadE;
-assign CSRReadE = (ResultSrcE == 2'b11);
 
 // MEMORY STAGE
 logic [31:0] LoadResultM;
@@ -275,39 +273,46 @@ lsu lsu(
 );
  
 assign WriteEn = MemRWM[0];
-assign ForwardResultM = (ResultSrcM == 2'b10) ? LoadResultM : ALUResultM;
+
+always_comb begin
+    case (ResultSrcM)
+        2'b10:   ForwardResultM = LoadResultM;
+        default: ForwardResultM = ALUResultM;
+    endcase
+end
 
 // MEM/WB PIPELINE REGISTER
-flopr #(1)  MEM_WB_RegWrite   (clk, reset, RegWriteM,    RegWriteW);
-flopr #(2)  MEM_WB_ResultSrc  (clk, reset, ResultSrcM,   ResultSrcW);
+flopr #(1)  MEM_WB_Valid        (clk, reset, ValidM,        ValidW);
+flopr #(1)  MEM_WB_RegWrite     (clk, reset, RegWriteM,     RegWriteW);
+flopr #(2)  MEM_WB_ResultSrc    (clk, reset, ResultSrcM,    ResultSrcW);
 
-flopr #(32) MEM_WB_ALUResult  (clk, reset, ALUResultM,   ALUResultW);
-flopr #(32) MEM_WB_ReadData   (clk, reset, LoadResultM,  ReadDataW);
-flopr #(32) MEM_WB_PCPlus4    (clk, reset, PCPlus4M,     PCPlus4W);
-flopr #(5)  MEM_WB_Rd         (clk, reset, RdM,          RdW);
-flopr #(12) MEM_WB_CSRAdr     (clk, reset, CSRAdrM,      CSRAdrW);
+flopr #(32) MEM_WB_ALUResult    (clk, reset, ALUResultM,    ALUResultW);
+flopr #(32) MEM_WB_ReadData     (clk, reset, LoadResultM,   ReadDataW);
+flopr #(32) MEM_WB_PCPlus4      (clk, reset, PCPlus4M,      PCPlus4W);
+flopr #(5)  MEM_WB_Rd           (clk, reset, RdM,           RdW);
+flopr #(12) MEM_WB_CSRAdr       (clk, reset, CSRAdrM,       CSRAdrW);
  
-flopr #(1) MEM_WB_IsAdd        (clk, reset, IsAddM,         IsAddW);
-flopr #(1) MEM_WB_IsBranch     (clk, reset, IsBranchM,      IsBranchW);
-flopr #(1) MEM_WB_IsBranchTaken(clk, reset, IsBranchTakenM, IsBranchTakenW);
-flopr #(1) MEM_WB_IsLoad       (clk, reset, IsLoadM,        IsLoadW);
-flopr #(1) MEM_WB_IsStore      (clk, reset, IsStoreM,       IsStoreW);
-flopr #(1) MEM_WB_IsJump       (clk, reset, IsJumpM,        IsJumpW);
-flopr #(1) MEM_WB_IsCSR        (clk, reset, IsCSRM,          IsCSRW);
-flopr #(1) MEM_WB_IsALUImm     (clk, reset, IsALUImmM,      IsALUImmW);
+flopr #(1)  MEM_WB_IsAdd        (clk, reset, IsAddM,        IsAddW);
+flopr #(1)  MEM_WB_IsBranch     (clk, reset, IsBranchM,     IsBranchW);
+flopr #(1)  MEM_WB_IsBranchTaken(clk, reset, IsBranchTakenM,IsBranchTakenW);
+flopr #(1)  MEM_WB_IsLoad       (clk, reset, IsLoadM,       IsLoadW);
+flopr #(1)  MEM_WB_IsStore      (clk, reset, IsStoreM,      IsStoreW);
+flopr #(1)  MEM_WB_IsJump       (clk, reset, IsJumpM,       IsJumpW);
+flopr #(1)  MEM_WB_IsCSR        (clk, reset, IsCSRM,        IsCSRW);
+flopr #(1)  MEM_WB_IsALUImm     (clk, reset, IsALUImmM,     IsALUImmW);
  
-
 // WRITEBACK STAGE
-always_comb
+always_comb begin
     case (ResultSrcW)
-        2'b00:   ResultW = ALUResultW;    // ALU result
-        2'b01:   ResultW = PCPlus4W;      // JAL/JALR return address
-        2'b10:   ResultW = ReadDataW;     // load result
-        2'b11:   ResultW = CSRReadDataW;  // CSR read
+        2'b00:   ResultW = ALUResultW;
+        2'b01:   ResultW = PCPlus4W;
+        2'b10:   ResultW = ReadDataW;
+        2'b11:   ResultW = CSRReadDataW;
         default: ResultW = ALUResultW;
     endcase
+end
  
-assign InstrRetiredW = RegWriteW | IsStoreW | IsBranchW;
+assign InstrRetiredW = ValidW;
 
 csr csr_unit(
     .clk,
@@ -325,13 +330,13 @@ csr csr_unit(
     .CSRReadData    (CSRReadDataW)
 );
  
-
 // HAZARD UNIT
 hazard hazard_unit(
     .Rs1D, .Rs2D,
     .Rs1E, .Rs2E, .RdE,
     .RdM,  .RdW,
     .RegWriteM, .RegWriteW,
+    .ValidM, .ValidW,
     .MemReadE,
     .CSRReadE,
     .PCSrcE,
