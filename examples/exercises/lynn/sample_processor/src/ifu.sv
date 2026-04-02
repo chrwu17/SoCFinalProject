@@ -5,7 +5,7 @@
 module ifu(
         input   logic           clk, reset,
         input   logic           PCSrcE,
-        input   logic           PCTargetE,
+        input   logic [31:0]    PCTargetE,
         input   logic           StallF,
         output  logic [31:0]    PCF, PCPlus4F
     );
