@@ -255,6 +255,9 @@ flopr #(1)  EX_MEM_IsJump       (clk, reset, IsJumpE,       IsJumpM);
 flopr #(1)  EX_MEM_IsCSR        (clk, reset, IsCSRE,        IsCSRM);
 flopr #(1)  EX_MEM_IsALUImm     (clk, reset, IsALUImmE,     IsALUImmM);
 
+logic CSRReadE;
+assign CSRReadE = (ResultSrcE == 2'b11);
+
 // MEMORY STAGE
 logic [31:0] LoadResultM;
  
@@ -330,6 +333,7 @@ hazard hazard_unit(
     .RdM,  .RdW,
     .RegWriteM, .RegWriteW,
     .MemReadE,
+    .CSRReadE,
     .PCSrcE,
     .StallF, .StallD,
     .FlushD, .FlushE,

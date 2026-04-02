@@ -9,18 +9,21 @@ module hazard (
     input   logic [4:0] RdM, RdW,
     input   logic       RegWriteM, RegWriteW,
     input   logic       MemReadE,
+    input   logic       CSRReadE,
     input   logic       PCSrcE,
     output  logic       StallF, StallD,
     output  logic       FlushD, FlushE,
     output  logic [1:0] ForwardAE, ForwardBE
 );
-    logic LoadStall;
-    assign LoadStall = MemReadE & ((RdE == Rs1D) | (RdE == Rs2D));
+    logic LoadStall, CSRStall;
 
-    assign StallF    = LoadStall;
-    assign StallD    = LoadStall;
+    assign LoadStall = MemReadE & (RdE != 5'd0) & ((RdE == Rs1D) | (RdE == Rs2D));
+    assign CSRStall  = CSRReadE & (RdE != 5'd0) & ((RdE == Rs1D) | (RdE == Rs2D));
+
+    assign StallF    = LoadStall | CSRStall;
+    assign StallD    = LoadStall | CSRStall;
     assign FlushD    = PCSrcE;
-    assign FlushE    = LoadStall | PCSrcE;
+    assign FlushE    = LoadStall | CSRStall | PCSrcE;
 
     always_comb begin
         if      (RegWriteM && RdM != 0 && RdM == Rs1E) ForwardAE = 2'b10;

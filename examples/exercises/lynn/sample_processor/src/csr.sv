@@ -31,7 +31,7 @@ module csr (
 
     always_ff @(posedge clk) begin
         if (reset) begin
-            cycle_cnt   <= 64'd1;
+            cycle_cnt   <= 64'd0;
             instret_cnt <= 64'd0;
         end else begin
             cycle_cnt <= cycle_cnt + 1;
@@ -62,28 +62,22 @@ module csr (
     always_comb begin
         case (CSRAdr)
             // Zicntr
-            12'hC00: CSRReadData = cycle_cnt[31:0];
-            12'hC80: CSRReadData = cycle_cnt[63:32];
-            12'hC01: CSRReadData = cycle_cnt[31:0];    // time == cycle
-            12'hC81: CSRReadData = cycle_cnt[63:32];
-            12'hC02: CSRReadData = instret_cnt[31:0];
-            12'hC82: CSRReadData = instret_cnt[63:32];
-            12'hC03: CSRReadData = hpm3[31:0];
-            12'hC04: CSRReadData = hpm4[31:0];
-            12'hC05: CSRReadData = hpm5[31:0];
-            12'hC06: CSRReadData = hpm6[31:0];
-            12'hC07: CSRReadData = hpm7[31:0];
-            12'hC08: CSRReadData = hpm8[31:0];
-            12'hC09: CSRReadData = hpm9[31:0];
-            12'hC0A: CSRReadData = hpm10[31:0];
-            12'hC83: CSRReadData = hpm3[63:32];
-            12'hC84: CSRReadData = hpm4[63:32];
-            12'hC85: CSRReadData = hpm5[63:32];
-            12'hC86: CSRReadData = hpm6[63:32];
-            12'hC87: CSRReadData = hpm7[63:32];
-            12'hC88: CSRReadData = hpm8[63:32];
-            12'hC89: CSRReadData = hpm9[63:32];
-            12'hC8A: CSRReadData = hpm10[63:32];
+            12'hC03: CSRReadData = 32'b0;
+            12'hC04: CSRReadData = 32'b0;
+            12'hC05: CSRReadData = 32'b0;
+            12'hC06: CSRReadData = 32'b0;
+            12'hC07: CSRReadData = 32'b0;
+            12'hC08: CSRReadData = 32'b0;
+            12'hC09: CSRReadData = 32'b0;
+            12'hC0A: CSRReadData = 32'b0;
+            12'hC83: CSRReadData = 32'b0;
+            12'hC84: CSRReadData = 32'b0;
+            12'hC85: CSRReadData = 32'b0;
+            12'hC86: CSRReadData = 32'b0;
+            12'hC87: CSRReadData = 32'b0;
+            12'hC88: CSRReadData = 32'b0;
+            12'hC89: CSRReadData = 32'b0;
+            12'hC8A: CSRReadData = 32'b0;
             default: CSRReadData = 32'b0;
         endcase
     end
