@@ -13,7 +13,7 @@ implemented_extensions:
   - { name: Zicsr, version: ">= 2.0" }
   - { name: Zihpm, version: ">= 2.0" }
   - { name: Zmmul, version: ">= 1.0"}
-
+  - { name: Zbb, version: ">= 1.0"}
 params:
   # Zicntr params
   TIME_CSR_IMPLEMENTED: true
