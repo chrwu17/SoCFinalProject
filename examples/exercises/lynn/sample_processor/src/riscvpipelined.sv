@@ -29,6 +29,9 @@ logic        RegWriteD, MemReadD, ALUResultSrcD, CSREnD, MulOpD, BranchD, JumpD;
 logic [1:0]  ResultSrcD, MemRWD, ALUSrcD, MulSelD;
 logic [2:0]  ImmSrcD, ALUSelectD;
 logic        SubArithD;
+logic        ZBBOpD;
+logic [3:0]  ZBBSelD;
+logic        ZBBOrcBD;
 logic        IsAddD, IsBranchD, IsLoadD, IsStoreD, IsJumpD, IsCSRD, IsALUImmD;
 logic        ValidD;
  
@@ -41,6 +44,9 @@ logic        RegWriteE, MemReadE, ALUResultSrcE, CSREnE, MulOpE, BranchE, JumpE;
 logic [1:0]  ResultSrcE, MemRWE, ALUSrcE, MulSelE;
 logic [2:0]  ALUSelectE;
 logic        SubArithE;
+logic        ZBBOpE;
+logic [3:0]  ZBBSelE;
+logic        ZBBOrcBE;
 logic        IsAddE, IsBranchE, IsLoadE, IsStoreE, IsJumpE, IsCSRE, IsALUImmE;
 logic        ValidE;
 logic [31:0] SrcAE, SrcBE;
@@ -126,6 +132,7 @@ controller ctrl(
     .Funct3       (InstrD[14:12]),
     .Funct7b5     (InstrD[30]),
     .Funct7       (InstrD[31:25]),
+    .Rs2          (InstrD[24:20]),
     .ALUResultSrc (ALUResultSrcD),
     .ResultSrc    (ResultSrcD),
     .MemRW        (MemRWD),
@@ -139,6 +146,9 @@ controller ctrl(
     .CSREn        (CSREnD),
     .MulOp        (MulOpD),
     .MulSel       (MulSelD),
+    .ZBBOp        (ZBBOpD),
+    .ZBBSel       (ZBBSelD),
+    .ZBBOrcB      (ZBBOrcBD),
     .Branch       (BranchD),
     .Jump         (JumpD),
     .IsAdd        (IsAddD),
@@ -164,6 +174,9 @@ flopenr #(1)  ID_EX_Jump        (clk, reset | FlushE, 1'b1, JumpD,         JumpE
 flopenr #(1)  ID_EX_CSREn       (clk, reset | FlushE, 1'b1, CSREnD,        CSREnE);
 flopenr #(1)  ID_EX_MulOp       (clk, reset | FlushE, 1'b1, MulOpD,        MulOpE);
 flopenr #(2)  ID_EX_MulSel      (clk, reset | FlushE, 1'b1, MulSelD,       MulSelE);
+flopenr #(1)  ID_EX_ZBBOp       (clk, reset | FlushE, 1'b1, ZBBOpD,        ZBBOpE);
+flopenr #(4)  ID_EX_ZBBSel      (clk, reset | FlushE, 1'b1, ZBBSelD,       ZBBSelE);
+flopenr #(1)  ID_EX_ZBBOrcB     (clk, reset | FlushE, 1'b1, ZBBOrcBD,      ZBBOrcBE);
  
 flopenr #(32) ID_EX_RD1         (clk, reset | FlushE, 1'b1, RD1D,          RD1E);
 flopenr #(32) ID_EX_RD2         (clk, reset | FlushE, 1'b1, RD2D,          RD2E);
@@ -208,6 +221,9 @@ alu alu(
     .SubArith  (SubArithE),
     .MulOp     (MulOpE),
     .MulSel    (MulSelE),
+    .ZBBOp     (ZBBOpE),
+    .ZBBSel    (ZBBSelE),
+    .ZBBOrcB   (ZBBOrcBE),
     .ALUResult (ALUResultRaw),
     .IEUAdr    (IEUAdrE)
 );

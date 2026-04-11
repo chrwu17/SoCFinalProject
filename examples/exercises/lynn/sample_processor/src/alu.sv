@@ -1,6 +1,7 @@
-// riscvsingle.sv
-// RISC-V single-cycle processor
-// David_Harris@hmc.edu 2020
+// alu.sv
+// Christian Wu & Eastan Oo
+// 04/10/2026
+// chrwu@g.hmc.edu eoo@g.hmc.edu
 
 module alu(
         input   logic [31:0]    SrcA, SrcB,
@@ -8,6 +9,9 @@ module alu(
         input   logic           SubArith,
         input   logic           MulOp,
         input   logic [1:0]     MulSel,
+        input   logic           ZBBOp,
+        input   logic [3:0]     ZBBSel,
+        input   logic           ZBBOrcB,
         output  logic [31:0]    ALUResult, IEUAdr
     );
 
@@ -21,7 +25,7 @@ module alu(
 
     // Add or subtract
     assign CondInvb = SubArith ? ~SrcB : SrcB;
-    assign Sum = SrcA + CondInvb + {{(31){1'b0}}, SubArith};
+    assign Sum = SrcA + CondInvb + {{31{1'b0}}, SubArith};
     assign IEUAdr = Sum; // Send this out to IFU and LSU
 
     // Set less than based on subtraction result
@@ -66,5 +70,83 @@ module alu(
         endcase
     end
 
-    assign ALUResult = MulOp ? mul_result : alu_result;
+    // ZBB
+    logic [5:0] clz_count;
+    always_comb begin
+        logic found;
+        found = 1'b0;
+        clz_count = 6'd32;
+        for (int i = 31; i >= 0; i--) begin
+            if (!found && SrcA[i]) begin
+                clz_count = 6'(31 - i);
+                found = 1'b1;
+            end
+        end
+    end
+
+    logic [5:0] ctz_count;
+    always_comb begin
+        logic found;
+        found = 1'b0;
+        ctz_count = 6'd32;
+        for (int i = 0; i <= 31; i++) begin
+            if (!found && SrcA[i]) begin
+                ctz_count = 6'(i);
+                found = 1'b1;
+            end
+        end
+    end
+
+    logic [5:0] cpop_count;
+    always_comb begin
+        cpop_count = 6'd0;
+        for (int i = 0; i < 32; i++)
+            cpop_count = cpop_count + {5'b0, SrcA[i]};
+    end
+
+    logic [31:0] orcb_result;
+    assign orcb_result = {
+        {8{|SrcA[31:24]}},
+        {8{|SrcA[23:16]}},
+        {8{|SrcA[15:8]}},
+        {8{|SrcA[7:0]}}
+    };
+
+    logic [31:0] rev8_result;
+    assign rev8_result = {SrcA[7:0], SrcA[15:8], SrcA[23:16], SrcA[31:24]};
+
+    logic [31:0] rol_result, ror_result;
+    logic [5:0]  rot_comp;
+    assign rot_comp   = 6'd32 - {1'b0, shiftAmount};
+    assign rol_result = (SrcA << shiftAmount) | (SrcA >> rot_comp[4:0]);
+    assign ror_result = (SrcA >> shiftAmount) | (SrcA << rot_comp[4:0]);
+
+    logic [31:0] zbb_result;
+    always_comb begin
+        case (ZBBSel)
+            4'd0:    zbb_result = SrcA & ~SrcB;
+            4'd1:    zbb_result = SrcA | ~SrcB;
+            4'd2:    zbb_result = ~(SrcA ^ SrcB);
+            4'd3:    zbb_result = ($signed(SrcA)   < $signed(SrcB))  ? SrcA : SrcB;
+            4'd4:    zbb_result = ($signed(SrcA)   > $signed(SrcB))  ? SrcA : SrcB;
+            4'd5:    zbb_result = ($unsigned(SrcA) < $unsigned(SrcB))? SrcA : SrcB;
+            4'd6:    zbb_result = ($unsigned(SrcA) > $unsigned(SrcB))? SrcA : SrcB;
+            4'd7:    zbb_result = {16'b0, SrcA[15:0]};
+            4'd8:    zbb_result = rol_result;
+            4'd9:    zbb_result = ror_result;
+            4'd10:   zbb_result = {26'b0, clz_count};
+            4'd11:   zbb_result = {26'b0, ctz_count};
+            4'd12:   zbb_result = {26'b0, cpop_count};
+            4'd13:   zbb_result = {{24{SrcA[7]}},  SrcA[7:0]};
+            4'd14:   zbb_result = {{16{SrcA[15]}}, SrcA[15:0]};
+            4'd15:   zbb_result = ZBBOrcB ? orcb_result : rev8_result;
+            default: zbb_result = 32'bx;
+        endcase
+    end
+
+    // Output mux
+    assign ALUResult = MulOp ? mul_result :
+                       ZBBOp ? zbb_result :
+                               alu_result;
+
 endmodule
