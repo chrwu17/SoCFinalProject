@@ -5,34 +5,35 @@
 
 module hazard (
     input   logic [4:0] Rs1D, Rs2D,
-    input   logic [4:0] Rs1E, Rs2E, RdE,
-    input   logic [4:0] RdM, RdW,
-    input   logic       RegWriteM, RegWriteW,
-    input   logic       ValidM, ValidW,
+    input   logic [4:0] RdE, RdM, RdW,
+    input   logic       RegWriteE, RegWriteM, RegWriteW,
+    input   logic       ValidE, ValidM, ValidW, 
     input   logic       MemReadE,
     input   logic       CSRReadE,
+    input   logic       IsCSRM,
     input   logic       PCSrcE,
     output  logic       StallF, StallD,
     output  logic       FlushD, FlushE,
-    output  logic [1:0] ForwardAE, ForwardBE
+    output  logic [1:0] ForwardAD, ForwardBD
 );
-    logic LoadStall, CSRStall;
+    logic LoadStall, CSRStall, CSRStallM;
 
     assign LoadStall = MemReadE && (RdE != 5'd0) && ((RdE == Rs1D) || (RdE == Rs2D));
     assign CSRStall  = CSRReadE && (RdE != 5'd0) && ((RdE == Rs1D) || (RdE == Rs2D));
+    assign CSRStallM = IsCSRM   && (RdM != 5'd0) && ((RdM == Rs1D) || (RdM == Rs2D));
 
-    assign StallF = LoadStall || CSRStall;
-    assign StallD = LoadStall || CSRStall;
+    assign StallF = LoadStall || CSRStall || CSRStallM;
+    assign StallD = LoadStall || CSRStall || CSRStallM;
     assign FlushD = PCSrcE;
-    assign FlushE = LoadStall || CSRStall || PCSrcE;
+    assign FlushE = LoadStall || CSRStall || CSRStallM || PCSrcE;
 
     always_comb begin
-        if      (ValidM && RegWriteM && (RdM != 5'd0) && (RdM == Rs1E)) ForwardAE = 2'b10;
-        else if (ValidW && RegWriteW && (RdW != 5'd0) && (RdW == Rs1E)) ForwardAE = 2'b01;
-        else                                                            ForwardAE = 2'b00;
+        if      (ValidE && RegWriteE && (RdE != 5'd0) && (RdE == Rs1D)) ForwardAD = 2'b10;
+        else if (ValidM && RegWriteM && (RdM != 5'd0) && (RdM == Rs1D) && !IsCSRM) ForwardAD = 2'b01;
+        else                                                            ForwardAD = 2'b00;
 
-        if      (ValidM && RegWriteM && (RdM != 5'd0) && (RdM == Rs2E)) ForwardBE = 2'b10;
-        else if (ValidW && RegWriteW && (RdW != 5'd0) && (RdW == Rs2E)) ForwardBE = 2'b01;
-        else                                                            ForwardBE = 2'b00;
+        if      (ValidE && RegWriteE && (RdE != 5'd0) && (RdE == Rs2D)) ForwardBD = 2'b10;
+        else if (ValidM && RegWriteM && (RdM != 5'd0) && (RdM == Rs2D) && !IsCSRM) ForwardBD = 2'b01;
+        else                                                            ForwardBD = 2'b00;
     end
 endmodule
