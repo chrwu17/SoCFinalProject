@@ -80,7 +80,7 @@ logic        IsAddW, IsBranchW, IsBranchTakenW, IsLoadW, IsStoreW;
 logic        IsJumpW, IsCSRW, IsALUImmW;
 logic        InstrRetiredW;
 logic        ValidW;
-logic [31:0] ALUResultW;
+logic [31:0] ALUResultW, ForwardResultW;
 logic        WasCSRW;
 
 // HAZARD SIGNALS
@@ -211,17 +211,10 @@ floprc #(2) ID_EX_ForwardB (clk, reset, FlushE, ForwardBD, ForwardBE);
 // EXECUTE STAGE
 assign CSRReadE = ValidE && (ResultSrcE == 2'b11);
 
-logic [31:0] ForwardResultW;
-always_comb begin
-    case (ResultSrcW)
-        2'b01:   ForwardResultW = PCPlus4W;
-        2'b10:   ForwardResultW = ReadDataW;
-        default: ForwardResultW = ALUResultW; // Deliberately ignores CSRReadDataW
-    endcase
-end
+assign ForwardResultW = (ResultSrcW == 2'b01) ? PCPlus4W : (ResultSrcW == 2'b10) ? ReadDataW  : ALUResultW;
 
-mux3 #(32) ForwardMuxA(RD1E, ForwardResultW, ResultM, ForwardAE, SrcAE);
-mux3 #(32) ForwardMuxB(RD2E, ForwardResultW, ResultM, ForwardBE, WriteDataE);
+mux3 #(32) ForwardMuxA(RD1E, ForwardResultW, ALUResultM, ForwardAE, SrcAE);
+mux3 #(32) ForwardMuxB(RD2E, ForwardResultW, ALUResultM, ForwardBE, WriteDataE);
 
 logic [31:0] SrcBfinal;
 mux2 #(32) SrcBMux(WriteDataE, ImmExtE, ALUSrcE[0], SrcBfinal);
@@ -308,12 +301,7 @@ lsu lsu(
 
 assign WriteEn = MemRWM[0];
 
-always_comb begin
-    case (ResultSrcM)
-        2'b10:   ResultM = LoadResultM;       // loads: forwarded value is load data
-        default: ResultM = ALUResultM;         // normal, lui, auipc, jal, csr: forwarded value is ALU result
-    endcase
-end
+assign ResultM = (ResultSrcM == 2'b10) ? LoadResultM : ALUResultM;
 
 // MEM/WB PIPELINE REGISTER
 flopr #(1)  MEM_WB_Valid        (clk, reset, ValidM,        ValidW);

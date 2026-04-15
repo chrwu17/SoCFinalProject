@@ -11,7 +11,7 @@ module alu(
         input   logic [1:0]     MulSel,
         input   logic           ZBBOp,
         input   logic [3:0]     ZBBSel,
-        input   logic           ZBBOrcB, 
+        input   logic           ZBBOrcB,
         output  logic [31:0]    ALUResult, IEUAdr
     );
 
@@ -19,7 +19,7 @@ module alu(
     assign shiftAmount = SrcB[4:0];
 
     logic [31:0] sum_add, sum_sub;
-    
+
     assign sum_add = SrcA + SrcB;
     assign sum_sub = SrcA - SrcB;
 
@@ -28,7 +28,7 @@ module alu(
 
     logic [31:0] Sum, SLT, SLTU;
     assign Sum = alu_SubArith ? sum_sub : sum_add;
-    assign IEUAdr = Sum; 
+    assign IEUAdr = Sum;
 
     logic is_lt, is_ltu;
     assign is_ltu = SrcA < SrcB;
@@ -67,8 +67,8 @@ module alu(
             3'b011: alu_result = SLTU;
             3'b100: alu_result = SrcA ^ SrcB;
             3'b101: alu_result = SubArith ?
-                         $unsigned($signed(SrcA) >>> shiftAmount) :
-                         SrcA >> shiftAmount;
+                        $unsigned($signed(SrcA) >>> shiftAmount) :
+                        SrcA >> shiftAmount;
             3'b110: alu_result = SrcA | SrcB;
             3'b111: alu_result = SrcA & SrcB;
             default: alu_result = 32'bx;
@@ -134,19 +134,19 @@ module alu(
 
     always_comb begin
         // Level 1: 16 independent 2-bit adders
-        for (int i = 0; i < 16; i++) 
+        for (int i = 0; i < 16; i++)
             pop_lvl1[i] = {5'b0, SrcA[2*i]} + {5'b0, SrcA[2*i+1]};
             
         // Level 2: 8 independent adders
-        for (int i = 0; i < 8; i++)  
+        for (int i = 0; i < 8; i++)
             pop_lvl2[i] = pop_lvl1[2*i] + pop_lvl1[2*i+1];
             
         // Level 3: 4 independent adders
-        for (int i = 0; i < 4; i++)  
+        for (int i = 0; i < 4; i++)
             pop_lvl3[i] = pop_lvl2[2*i] + pop_lvl2[2*i+1];
             
         // Level 4: 2 independent adders
-        for (int i = 0; i < 2; i++)  
+        for (int i = 0; i < 2; i++)
             pop_lvl4[i] = pop_lvl3[2*i] + pop_lvl3[2*i+1];
             
         // Level 5: Final sum
@@ -166,12 +166,27 @@ module alu(
     logic [31:0] rev8_result;
     assign rev8_result = {SrcA[7:0], SrcA[15:8], SrcA[23:16], SrcA[31:24]};
 
-    // ROL / ROR — rotation by shiftAmount = SrcB[4:0]
+    // ROL / ROR barrel shifters
+    logic [4:0] rot_comp5;
+    logic [31:0] rol_s0, rol_s1, rol_s2, rol_s3, rol_s4;
+    logic [31:0] ror_s0, ror_s1, ror_s2, ror_s3, ror_s4;
+    assign rot_comp5 = 5'd32 - shiftAmount;
+
+    assign rol_s0 = shiftAmount[0] ? {SrcA[30:0],  SrcA[31]}      : SrcA;
+    assign rol_s1 = shiftAmount[1] ? {rol_s0[29:0], rol_s0[31:30]} : rol_s0;
+    assign rol_s2 = shiftAmount[2] ? {rol_s1[27:0], rol_s1[31:28]} : rol_s1;
+    assign rol_s3 = shiftAmount[3] ? {rol_s2[23:0], rol_s2[31:24]} : rol_s2;
+    assign rol_s4 = shiftAmount[4] ? {rol_s3[15:0], rol_s3[31:16]} : rol_s3;
+
+    assign ror_s0 = rot_comp5[0] ? {SrcA[30:0],  SrcA[31]}      : SrcA;
+    assign ror_s1 = rot_comp5[1] ? {ror_s0[29:0], ror_s0[31:30]} : ror_s0;
+    assign ror_s2 = rot_comp5[2] ? {ror_s1[27:0], ror_s1[31:28]} : ror_s1;
+    assign ror_s3 = rot_comp5[3] ? {ror_s2[23:0], ror_s2[31:24]} : ror_s2;
+    assign ror_s4 = rot_comp5[4] ? {ror_s3[15:0], ror_s3[31:16]} : ror_s3;
+
     logic [31:0] rol_result, ror_result;
-    logic [5:0]  rot_comp;
-    assign rot_comp  = 6'd32 - {1'b0, shiftAmount};
-    assign rol_result = (SrcA << shiftAmount) | (SrcA >> rot_comp[4:0]);
-    assign ror_result = (SrcA >> shiftAmount) | (SrcA << rot_comp[4:0]);
+    assign rol_result = rol_s4;
+    assign ror_result = ror_s4;
 
     // ZBB Mux
     logic [31:0] zbb_result;
@@ -199,7 +214,7 @@ module alu(
 
     // Output mux
     assign ALUResult = MulOp ? mul_result :
-                       ZBBOp ? zbb_result :
-                               alu_result;
+                        ZBBOp ? zbb_result :
+                                alu_result;
 
 endmodule
