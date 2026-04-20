@@ -32,7 +32,7 @@ logic        SubArithD;
 logic        ZBBOpD;
 logic [3:0]  ZBBSelD;
 logic        ZBBOrcBD;
-logic        IsAddD, IsBranchD, IsLoadD, IsStoreD, IsJumpD, IsCSRD, IsALUImmD;
+logic        IsCSRD;
 logic        ValidD;
  
 // EXECUTE SIGNALS
@@ -47,7 +47,7 @@ logic        SubArithE;
 logic        ZBBOpE;
 logic [3:0]  ZBBSelE;
 logic        ZBBOrcBE;
-logic        IsAddE, IsBranchE, IsLoadE, IsStoreE, IsJumpE, IsCSRE, IsALUImmE;
+logic        IsCSRE;
 logic        ValidE;
 logic [31:0] SrcAE, SrcBE;
 logic [31:0] ALUResultE, PCTargetE;
@@ -66,8 +66,7 @@ logic [2:0]  Funct3M;
 logic [11:0] CSRAdrM;
 logic        RegWriteM, MemReadM;
 logic [1:0]  MemRWM, ResultSrcM;
-logic        IsAddM, IsBranchM, IsBranchTakenM, IsLoadM, IsStoreM;
-logic        IsJumpM, IsCSRM, IsALUImmM;
+logic        IsCSRM;
 logic        ValidM;
  
 // WRITEBACK SIGNALS
@@ -76,8 +75,7 @@ logic [4:0]  RdW;
 logic [11:0] CSRAdrW;
 logic        RegWriteW;
 logic [1:0]  ResultSrcW;
-logic        IsAddW, IsBranchW, IsBranchTakenW, IsLoadW, IsStoreW;
-logic        IsJumpW, IsCSRW, IsALUImmW;
+logic        IsCSRW;
 logic        InstrRetiredW;
 logic        ValidW;
 logic [31:0] ALUResultW, ForwardResultW;
@@ -169,13 +167,7 @@ controller ctrl(
     .ZBBOrcB      (ZBBOrcBD),
     .Branch       (BranchD),
     .Jump         (JumpD),
-    .IsAdd        (IsAddD),
-    .IsBranch     (IsBranchD),
-    .IsLoad       (IsLoadD),
-    .IsStore      (IsStoreD),
-    .IsJump       (IsJumpD),
-    .IsCSR        (IsCSRD),
-    .IsALUImm     (IsALUImmD)
+    .IsCSR        (IsCSRD)
 );
  
 // ID/EX PIPELINE REGISTERS
@@ -213,15 +205,7 @@ flopenr #(5)  ID_EX_Rd          (clk, reset | FlushE, EnE, RdD,           RdE);
  
 flopenr #(3)  ID_EX_Funct3      (clk, reset | FlushE, EnE, InstrD[14:12], Funct3E);
 flopenr #(12) ID_EX_CSRAdr      (clk, reset | FlushE, EnE, InstrD[31:20], CSRAdrE);
- 
-flopenr #(1)  ID_EX_IsAdd       (clk, reset | FlushE, EnE, IsAddD,        IsAddE);
-flopenr #(1)  ID_EX_IsBranch    (clk, reset | FlushE, EnE, IsBranchD,     IsBranchE);
-flopenr #(1)  ID_EX_IsLoad      (clk, reset | FlushE, EnE, IsLoadD,       IsLoadE);
-flopenr #(1)  ID_EX_IsStore     (clk, reset | FlushE, EnE, IsStoreD,      IsStoreE);
-flopenr #(1)  ID_EX_IsJump      (clk, reset | FlushE, EnE, IsJumpD,       IsJumpE);
-flopenr #(1)  ID_EX_IsCSR       (clk, reset | FlushE, EnE, IsCSRD,        IsCSRE);
-flopenr #(1)  ID_EX_IsALUImm    (clk, reset | FlushE, EnE, IsALUImmD,     IsALUImmE);
- 
+flopenr #(1)  ID_EX_IsCSR       (clk, reset | FlushE, EnE, IsCSRD,        IsCSRE); 
  
 logic [1:0] ForwardAD, ForwardBD;
  
@@ -307,15 +291,7 @@ flopr #(5)  EX_MEM_Rd           (clk, reset, RdE,           RdM);
 flopr #(3)  EX_MEM_Funct3       (clk, reset, Funct3E,       Funct3M);
 flopr #(12) EX_MEM_CSRAdr       (clk, reset, CSRAdrE,       CSRAdrM);
  
-flopr #(1)  EX_MEM_IsAdd        (clk, reset, IsAddE,        IsAddM);
-flopr #(1)  EX_MEM_IsBranch     (clk, reset, IsBranchE,     IsBranchM);
-flopr #(1)  EX_MEM_IsBranchTaken(clk, reset, BranchTakenE,  IsBranchTakenM);
-flopr #(1)  EX_MEM_IsLoad       (clk, reset, IsLoadE,       IsLoadM);
-flopr #(1)  EX_MEM_IsStore      (clk, reset, IsStoreE,      IsStoreM);
-flopr #(1)  EX_MEM_IsJump       (clk, reset, IsJumpE,       IsJumpM);
-flopr #(1)  EX_MEM_IsCSR        (clk, reset, IsCSRE,        IsCSRM);
-flopr #(1)  EX_MEM_IsALUImm     (clk, reset, IsALUImmE,     IsALUImmM);
- 
+flopr #(1)  EX_MEM_IsCSR        (clk, reset, IsCSRE,        IsCSRM); 
 // MEMORY STAGE
 logic [31:0] LoadResultM;
  
@@ -347,15 +323,7 @@ flopr #(32) MEM_WB_ALUResult   (clk, reset, ALUResultM,    ALUResultW);
 flopr #(12) MEM_WB_CSRAdr      (clk, reset, CSRAdrM,       CSRAdrW);
 flopr #(1)  MEM_WB_WasCSR      (clk, reset, (ResultSrcM == 2'b11), WasCSRW);
  
-flopr #(1)  MEM_WB_IsAdd        (clk, reset, IsAddM,        IsAddW);
-flopr #(1)  MEM_WB_IsBranch     (clk, reset, IsBranchM,     IsBranchW);
-flopr #(1)  MEM_WB_IsBranchTaken(clk, reset, IsBranchTakenM,IsBranchTakenW);
-flopr #(1)  MEM_WB_IsLoad       (clk, reset, IsLoadM,       IsLoadW);
-flopr #(1)  MEM_WB_IsStore      (clk, reset, IsStoreM,       IsStoreW);
-flopr #(1)  MEM_WB_IsJump       (clk, reset, IsJumpM,       IsJumpW);
-flopr #(1)  MEM_WB_IsCSR        (clk, reset, IsCSRM,        IsCSRW);
-flopr #(1)  MEM_WB_IsALUImm     (clk, reset, IsALUImmM,     IsALUImmW);
- 
+flopr #(1)  MEM_WB_IsCSR        (clk, reset, IsCSRM,        IsCSRW); 
 // WRITEBACK STAGE
 always_comb begin
       case (ResultSrcW)
@@ -374,14 +342,6 @@ csr csr_unit(
     .clk,
     .reset,
     .InstrRetiredW  (InstrRetiredW),
-    .IsAdd          (IsAddW),
-    .IsBranch       (IsBranchW),
-    .IsBranchTaken  (IsBranchTakenW),
-    .IsLoad         (IsLoadW),
-    .IsStore        (IsStoreW),
-    .IsJump         (IsJumpW),
-    .IsCSR          (IsCSRW),
-    .IsALUImm       (IsALUImmW),
     .CSRAdr         (CSRAdrW),
     .CSRReadData    (CSRReadDataW)
 );

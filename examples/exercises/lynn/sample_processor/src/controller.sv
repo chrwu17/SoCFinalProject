@@ -31,14 +31,7 @@ module controller (
         output logic        ZBBOp,
         output logic [3:0]  ZBBSel,
         output logic        ZBBOrcB,
-
-        output logic        IsAdd,          // hpm3
-        output logic        IsBranch,       // hpm4
-        output logic        IsLoad,         // hpm6
-        output logic        IsStore,        // hpm7
-        output logic        IsJump,         // hpm8
-        output logic        IsCSR,          // hpm9
-        output logic        IsALUImm        // hpm10
+        output logic        IsCSR
     );
 
     logic ALUOp;
@@ -118,11 +111,7 @@ module controller (
         ZBBOp            = 1'b0;
         ZBBSel           = 4'd0;
         ZBBOrcB          = 1'b0;
-        IsLoad           = 1'b0;
-        IsStore          = 1'b0;
-        IsJump           = 1'b0;
         IsCSR            = 1'b0;
-        IsALUImm         = 1'b0;
 
 
         case (Op)
@@ -186,8 +175,6 @@ module controller (
                         ZBBSel  = 4'd15;              // ORC.B
                         ZBBOrcB = 1'b1;
                     end
-                end else begin
-                    IsALUImm = 1'b1;
                 end
             end
             7'h03: begin // loads
@@ -197,13 +184,11 @@ module controller (
                 MemRW        = 2'b10; 
                 MemRead      = 1'b1;
                 ResultSrc    = 2'b10;
-                IsLoad       = 1'b1;
             end
             7'h23: begin // stores
                 ALUSrc       = 2'b01;
                 ImmSrc       = 3'b001;
                 MemRW        = 2'b01;   // MemWrite
-                IsStore      = 1'b1;
             end
             7'h63: begin // branches
                 Branch       = 1'b1;
@@ -216,7 +201,6 @@ module controller (
                 ImmSrc       = 3'b011;
                 ResultSrc    = 2'b01;
                 RegWrite     = 1'b1;
-                IsJump       = 1'b1;
             end
             7'h67: begin // jalr
                 Jump         = 1'b1;
@@ -224,7 +208,6 @@ module controller (
                 ImmSrc       = 3'b000;
                 ResultSrc    = 2'b01;
                 RegWrite     = 1'b1;
-                IsJump       = 1'b1;
             end
             7'h37: begin // lui
                 ALUSrc       = 2'b01;
@@ -273,8 +256,5 @@ module controller (
             Sub   = 1'b0;
         end
     end
-
-    assign IsAdd = (Op == 7'h33 && Funct3 == 3'b000 && !Funct7b5) || (Op == 7'h13 && Funct3 == 3'b000);
-    assign IsBranch = Branch;
 
 endmodule

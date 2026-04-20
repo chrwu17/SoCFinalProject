@@ -11,15 +11,6 @@ module csr (
     input  logic        InstrRetiredW,
  
     // Zihpm events
-    input  logic        IsAdd,          // hpm3: ADD or ADDI executed
-    input  logic        IsBranch,       // hpm4: branch instruction evaluated
-    input  logic        IsBranchTaken,  // hpm5: branch actually taken
-    input  logic        IsLoad,         // hpm6: load instruction
-    input  logic        IsStore,        // hpm7: store instruction
-    input  logic        IsJump,         // hpm8: JAL or JALR
-    input  logic        IsCSR,          // hpm9: CSR read
-    input  logic        IsALUImm,       // hpm10: I-type ALU (non-add immediates)
- 
     input  logic [11:0] CSRAdr,
     output logic [31:0] CSRReadData
 );
@@ -27,10 +18,6 @@ module csr (
     // Zicntr: 64-bit counters
     logic [63:0] cycle_cnt;
     logic [63:0] instret_cnt;
- 
-    // Zihpm: 32-bit counters
-    logic [31:0] hpm3,  hpm4,  hpm5,  hpm6;
-    logic [31:0] hpm7,  hpm8,  hpm9,  hpm10;
  
     always_ff @(posedge clk) begin
         if (reset) begin
@@ -43,28 +30,6 @@ module csr (
         end
     end
  
-    always_ff @(posedge clk) begin
-        if (reset) begin
-            hpm3  <= 32'd0;
-            hpm4  <= 32'd0;
-            hpm5  <= 32'd0;
-            hpm6  <= 32'd0;
-            hpm7  <= 32'd0;
-            hpm8  <= 32'd0;
-            hpm9  <= 32'd0;
-            hpm10 <= 32'd0;
-        end else begin
-            if (IsAdd & InstrRetiredW)         hpm3  <= hpm3  + 1;
-            if (IsBranch & InstrRetiredW)      hpm4  <= hpm4  + 1;
-            if (IsBranchTaken & InstrRetiredW) hpm5  <= hpm5  + 1;
-            if (IsLoad & InstrRetiredW)        hpm6  <= hpm6  + 1;
-            if (IsStore & InstrRetiredW)       hpm7  <= hpm7  + 1;
-            if (IsJump & InstrRetiredW)        hpm8  <= hpm8  + 1;
-            if (IsCSR & InstrRetiredW)         hpm9  <= hpm9  + 1;
-            if (IsALUImm & InstrRetiredW)      hpm10 <= hpm10 + 1;
-        end
-    end
- 
     always_comb begin
         case (CSRAdr)
             // Zicntr (64-bit, read as low/high halves)
@@ -74,16 +39,6 @@ module csr (
             12'hC81: CSRReadData = cycle_cnt[63:32];
             12'hC02: CSRReadData = instret_cnt[31:0];
             12'hC82: CSRReadData = instret_cnt[63:32];
- 
-            // Zihpm low halves (32-bit counters)
-            12'hC03: CSRReadData = hpm3;
-            12'hC04: CSRReadData = hpm4;
-            12'hC05: CSRReadData = hpm5;
-            12'hC06: CSRReadData = hpm6;
-            12'hC07: CSRReadData = hpm7;
-            12'hC08: CSRReadData = hpm8;
-            12'hC09: CSRReadData = hpm9;
-            12'hC0A: CSRReadData = hpm10;
  
             // Zihpm high halves (always 0 for 32-bit counters)
             12'hC83: CSRReadData = 32'b0;
