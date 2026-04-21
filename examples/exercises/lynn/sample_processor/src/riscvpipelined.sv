@@ -40,14 +40,13 @@ logic [31:0] RD1E, RD2E, ImmExtE, PCE, PCPlus4E;
 logic [4:0]  Rs1E, Rs2E, RdE;
 logic [2:0]  Funct3E;
 logic [11:0] CSRAdrE;
-logic        RegWriteE, MemReadE, ALUResultSrcE, CSREnE, MulOpE, BranchE, JumpE;
+logic        RegWriteE, MemReadE, ALUResultSrcE, MulOpE, BranchE, JumpE;
 logic [1:0]  ResultSrcE, MemRWE, ALUSrcE, MulSelE;
 logic [2:0]  ALUSelectE;
 logic        SubArithE;
 logic        ZBBOpE;
 logic [3:0]  ZBBSelE;
 logic        ZBBOrcBE;
-logic        IsCSRE;
 logic        ValidE;
 logic [31:0] SrcAE, SrcBE;
 logic [31:0] ALUResultE, PCTargetE;
@@ -60,13 +59,11 @@ logic        CSRReadE;
  
 // MEMORY SIGNALS
 logic [31:0] ALUResultM, WriteDataM, PCPlus4M;
-logic [31:0] ResultM;
 logic [4:0]  RdM;
 logic [2:0]  Funct3M;
 logic [11:0] CSRAdrM;
 logic        RegWriteM, MemReadM;
 logic [1:0]  MemRWM, ResultSrcM;
-logic        IsCSRM;
 logic        ValidM;
  
 // WRITEBACK SIGNALS
@@ -75,11 +72,9 @@ logic [4:0]  RdW;
 logic [11:0] CSRAdrW;
 logic        RegWriteW;
 logic [1:0]  ResultSrcW;
-logic        IsCSRW;
 logic        InstrRetiredW;
 logic        ValidW;
 logic [31:0] ALUResultW, ForwardResultW;
-logic        WasCSRW;
  
 // HAZARD SIGNALS
 logic StallF, StallD, StallE, FlushD, FlushE;
@@ -186,7 +181,6 @@ flopenr #(1)  ID_EX_SubArith    (clk, reset | FlushE, EnE, SubArithD,     SubAri
 flopenr #(1)  ID_EX_ALUResultSrc(clk, reset | FlushE, EnE, ALUResultSrcD, ALUResultSrcE);
 flopenr #(1)  ID_EX_Branch      (clk, reset | FlushE, EnE, BranchD,       BranchE);
 flopenr #(1)  ID_EX_Jump        (clk, reset | FlushE, EnE, JumpD,         JumpE);
-flopenr #(1)  ID_EX_CSREn       (clk, reset | FlushE, EnE, CSREnD,        CSREnE);
 flopenr #(1)  ID_EX_MulOp       (clk, reset | FlushE, EnE, MulOpD,        MulOpE);
 flopenr #(2)  ID_EX_MulSel      (clk, reset | FlushE, EnE, MulSelD,       MulSelE);
 flopenr #(1)  ID_EX_ZBBOp       (clk, reset | FlushE, EnE, ZBBOpD,        ZBBOpE);
@@ -205,7 +199,6 @@ flopenr #(5)  ID_EX_Rd          (clk, reset | FlushE, EnE, RdD,           RdE);
  
 flopenr #(3)  ID_EX_Funct3      (clk, reset | FlushE, EnE, InstrD[14:12], Funct3E);
 flopenr #(12) ID_EX_CSRAdr      (clk, reset | FlushE, EnE, InstrD[31:20], CSRAdrE);
-flopenr #(1)  ID_EX_IsCSR       (clk, reset | FlushE, EnE, IsCSRD,        IsCSRE); 
  
 logic [1:0] ForwardAD, ForwardBD;
  
@@ -213,10 +206,8 @@ logic [1:0] ForwardAD, ForwardBD;
 floprc #(2) ID_EX_ForwardA (clk, reset, FlushE & ~MulStallE, ForwardAD, ForwardAE);
 floprc #(2) ID_EX_ForwardB (clk, reset, FlushE & ~MulStallE, ForwardBD, ForwardBE);
  
-// EXECUTE STAGE
-assign CSRReadE = ValidE && (ResultSrcE == 2'b11);
  
-assign ForwardResultW = (ResultSrcW == 2'b01) ? PCPlus4W : (ResultSrcW == 2'b10) ? ReadDataW  : ALUResultW;
+assign ForwardResultW = (ResultSrcW == 2'b01) ? PCPlus4W : (ResultSrcW == 2'b10) ? ReadDataW : (ResultSrcW == 2'b11) ? CSRReadDataW : ALUResultW;
  
 mux3 #(32) ForwardMuxA(RD1E, ForwardResultW, ALUResultM, ForwardAE, SrcAE);
 mux3 #(32) ForwardMuxB(RD2E, ForwardResultW, ALUResultM, ForwardBE, WriteDataE);
@@ -280,7 +271,6 @@ assign MemReadE_toM  = MulStallE ? 1'b0 : MemReadE;
  
 flopr #(1)  EX_MEM_Valid        (clk, reset, ValidE_toM,    ValidM);
 flopr #(1)  EX_MEM_RegWrite     (clk, reset, RegWriteE_toM, RegWriteM);
-flopr #(1)  EX_MEM_MemRead      (clk, reset, MemReadE_toM,  MemReadM);
 flopr #(2)  EX_MEM_MemRW        (clk, reset, MemRWE_toM,    MemRWM);
 flopr #(2)  EX_MEM_ResultSrc    (clk, reset, ResultSrcE,    ResultSrcM);
  
@@ -291,7 +281,6 @@ flopr #(5)  EX_MEM_Rd           (clk, reset, RdE,           RdM);
 flopr #(3)  EX_MEM_Funct3       (clk, reset, Funct3E,       Funct3M);
 flopr #(12) EX_MEM_CSRAdr       (clk, reset, CSRAdrE,       CSRAdrM);
  
-flopr #(1)  EX_MEM_IsCSR        (clk, reset, IsCSRE,        IsCSRM); 
 // MEMORY STAGE
 logic [31:0] LoadResultM;
  
@@ -310,8 +299,6 @@ lsu lsu(
  
 assign WriteEn = MemRWM[0];
  
-assign ResultM = (ResultSrcM == 2'b10) ? LoadResultM : ALUResultM;
- 
 // MEM/WB PIPELINE REGISTER
 flopr #(1)  MEM_WB_Valid        (clk, reset, ValidM,        ValidW);
 flopr #(1)  MEM_WB_RegWrite    (clk, reset, RegWriteM,     RegWriteW);
@@ -320,10 +307,7 @@ flopr #(32) MEM_WB_ReadData    (clk, reset, LoadResultM,   ReadDataW);
 flopr #(32) MEM_WB_PCPlus4     (clk, reset, PCPlus4M,      PCPlus4W);
 flopr #(5)  MEM_WB_Rd          (clk, reset, RdM,            RdW);
 flopr #(32) MEM_WB_ALUResult   (clk, reset, ALUResultM,    ALUResultW);
-flopr #(12) MEM_WB_CSRAdr      (clk, reset, CSRAdrM,       CSRAdrW);
-flopr #(1)  MEM_WB_WasCSR      (clk, reset, (ResultSrcM == 2'b11), WasCSRW);
- 
-flopr #(1)  MEM_WB_IsCSR        (clk, reset, IsCSRM,        IsCSRW); 
+flopr #(12) MEM_WB_CSRAdr      (clk, reset, CSRAdrM,       CSRAdrW); 
 // WRITEBACK STAGE
 always_comb begin
       case (ResultSrcW)
@@ -337,7 +321,7 @@ always_comb begin
 assign ResultW = Result;
  
 assign InstrRetiredW = ValidW;
- 
+
 csr csr_unit(
     .clk,
     .reset,
@@ -345,6 +329,9 @@ csr csr_unit(
     .CSRAdr         (CSRAdrW),
     .CSRReadData    (CSRReadDataW)
 );
+
+logic CSRInE;
+flopenr #(1) ID_EX_IsCSR (clk, reset | FlushE, EnE, IsCSRD, CSRInE);
  
 // HAZARD UNIT
 hazard hazard_unit(
@@ -354,8 +341,7 @@ hazard hazard_unit(
     .RegWriteE, .RegWriteM, .RegWriteW,
     .ValidE, .ValidM, .ValidW,
     .MemReadE,
-    .CSRReadE,
-    .IsCSRM,
+    .CSRInE,
     .MulStallE,
     .PCSrcE,
     .StallF, .StallD, .StallE,
