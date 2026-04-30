@@ -22,7 +22,6 @@ module controller (
         output logic        W64,
         output logic [2:0]  ALUSelect,
         output logic        SubArith,
-        output logic        CSREn,
         output logic        MulOp,
         output logic [1:0]  MulSel,
         output logic        Branch,
@@ -105,7 +104,6 @@ module controller (
         MemRW            = 2'b00;
         MemRead          = 1'b0;
         W64              = 1'b0;
-        CSREn            = 1'b0;
         MulOp            = 1'b0;
         MulSel           = 2'b00;
         ZBBOp            = 1'b0;
@@ -224,7 +222,6 @@ module controller (
                 if (Funct3 == 3'b010) begin
                     RegWrite  = 1'b1;
                     ResultSrc = 2'b11;
-                    CSREn     = 1'b1;
                     IsCSR     = 1'b1;
                 end
             end

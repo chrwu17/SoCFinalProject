@@ -76,28 +76,48 @@ module alu(
     logic [31:0] funnel_result;
     assign funnel_result = fs4[31:0];
 
-    // Zmmul — pipelined multiplier (2 register stages)
-    logic signed [32:0] mul_a, mul_b;
-    logic signed [32:0] mul_a_reg, mul_b_reg;
-    logic signed [65:0] mul_full;
-    logic [31:0]        mul_result;
+    // Zmmul — pipelined multiplier (2 register stages) with partial product multiplication.
+    logic [31:0] mul_a_reg, mul_b_reg;
+    logic [63:0] mul_full;
+    logic [31:0] mul_result;
 
-    always_comb begin
-        mul_a = (MulSel == 2'b11) ? {1'b0, SrcA} : {SrcA[31], SrcA};
-        mul_b = (MulSel == 2'b11 || MulSel == 2'b10) ? {1'b0, SrcB} : {SrcB[31], SrcB};
-    end
+    logic [31:0] Aprime, Bprime;
+    logic [30:0] PA, PB;
+    logic        PP;
+    logic [63:0] PP1, PP2, PP3, PP4;
+    logic        IsMulH, IsMulHSU;
 
     // Stage 1 register: capture multiply inputs
     always_ff @(posedge clk) begin
-        mul_a_reg <= mul_a;
-        mul_b_reg <= mul_b;
+        mul_a_reg <= SrcA;
+        mul_b_reg <= SrcB;
     end
 
-    // Combinational multiply between the two register stages
-    assign mul_full = mul_a_reg * mul_b_reg;
+    assign IsMulH   = (MulSel == 2'b01);  // MULH   signed*signed
+    assign IsMulHSU = (MulSel == 2'b10);  // MULHSU signed*unsigned
+
+    assign Aprime = {1'b0, mul_a_reg[30:0]};
+    assign Bprime = {1'b0, mul_b_reg[30:0]};
+    assign PA = {(31){mul_a_reg[31]}} & mul_b_reg[30:0];
+    assign PB = {(31){mul_b_reg[31]}} & mul_a_reg[30:0];
+    assign PP = mul_a_reg[31] & mul_b_reg[31];
+
+    assign PP1 = Aprime * Bprime;
+    assign PP2 = {2'b00, (IsMulH | IsMulHSU) ? ~PA : PA, 31'b0};
+    assign PP3 = {2'b00, IsMulH ? ~PB : PB, 31'b0};
+    always_comb begin
+        if (IsMulH)
+            PP4 = {1'b1, PP, 29'b0, 1'b1, 32'b0};
+        else if (IsMulHSU)
+            PP4 = {1'b1, ~PP, 30'b0, 1'b1, 31'b0};
+        else
+            PP4 = {1'b0, PP, 62'b0}; // MUL/MULHU
+    end
+
+    assign mul_full = PP1 + PP2 + PP3 + PP4;
 
     // Stage 2 register: capture multiply output
-    logic signed [65:0] mul_full_reg;
+    logic [63:0] mul_full_reg;
     always_ff @(posedge clk) begin
         mul_full_reg <= mul_full;
     end

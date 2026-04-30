@@ -40,16 +40,6 @@ module csr (
             12'hC02: CSRReadData = instret_cnt[31:0];
             12'hC82: CSRReadData = instret_cnt[63:32];
  
-            // Zihpm high halves (always 0 for 32-bit counters)
-            12'hC83: CSRReadData = 32'b0;
-            12'hC84: CSRReadData = 32'b0;
-            12'hC85: CSRReadData = 32'b0;
-            12'hC86: CSRReadData = 32'b0;
-            12'hC87: CSRReadData = 32'b0;
-            12'hC88: CSRReadData = 32'b0;
-            12'hC89: CSRReadData = 32'b0;
-            12'hC8A: CSRReadData = 32'b0;
- 
             default: CSRReadData = 32'b0;
         endcase
     end

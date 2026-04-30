@@ -28,7 +28,6 @@ module ieu(
     logic        RegWrite;
     logic [2:0]  ImmSrc;
 
-    logic        CSREn;
     logic [31:0] CSRReadData;
 
     logic        MulOp;
@@ -59,7 +58,6 @@ module ieu(
         .W64,
         .ALUSelect,
         .SubArith,
-        .CSREn,
         .MulOp,
         .MulSel,
         .Branch,

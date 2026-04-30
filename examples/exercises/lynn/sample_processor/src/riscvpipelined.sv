@@ -25,7 +25,7 @@ logic [31:0] InstrD, PCD, PCPlus4D;
 logic [31:0] RD1D, RD2D;
 logic [31:0] ImmExtD;
 logic [4:0]  Rs1D, Rs2D, RdD;
-logic        RegWriteD, MemReadD, ALUResultSrcD, CSREnD, MulOpD, BranchD, JumpD;
+logic        RegWriteD, MemReadD, ALUResultSrcD, MulOpD, BranchD, JumpD;
 logic [1:0]  ResultSrcD, MemRWD, ALUSrcD, MulSelD;
 logic [2:0]  ImmSrcD, ALUSelectD;
 logic        SubArithD;
@@ -37,7 +37,7 @@ logic        ValidD;
  
 // EXECUTE SIGNALS
 logic [31:0] RD1E, RD2E, ImmExtE, PCE, PCPlus4E;
-logic [4:0]  Rs1E, Rs2E, RdE;
+logic [4:0]  RdE;
 logic [2:0]  Funct3E;
 logic [11:0] CSRAdrE;
 logic        RegWriteE, MemReadE, ALUResultSrcE, MulOpE, BranchE, JumpE;
@@ -154,7 +154,6 @@ controller ctrl(
     .W64          (),
     .ALUSelect    (ALUSelectD),
     .SubArith     (SubArithD),
-    .CSREn        (CSREnD),
     .MulOp        (MulOpD),
     .MulSel       (MulSelD),
     .ZBBOp        (ZBBOpD),
@@ -193,8 +192,6 @@ flopenr #(32) ID_EX_ImmExt      (clk, reset | FlushE, EnE, ImmExtD,       ImmExt
 flopenr #(32) ID_EX_PC          (clk, reset | FlushE, EnE, PCD,           PCE);
 flopenr #(32) ID_EX_PCPlus4     (clk, reset | FlushE, EnE, PCPlus4D,      PCPlus4E);
  
-flopenr #(5)  ID_EX_Rs1         (clk, reset | FlushE, EnE, Rs1D,          Rs1E);
-flopenr #(5)  ID_EX_Rs2         (clk, reset | FlushE, EnE, Rs2D,          Rs2E);
 flopenr #(5)  ID_EX_Rd          (clk, reset | FlushE, EnE, RdD,           RdE);
  
 flopenr #(3)  ID_EX_Funct3      (clk, reset | FlushE, EnE, InstrD[14:12], Funct3E);
@@ -337,9 +334,9 @@ flopenr #(1) ID_EX_IsCSR (clk, reset | FlushE, EnE, IsCSRD, CSRInE);
 hazard hazard_unit(
     .Rs1D, .Rs2D,
     .RdE,
-    .RdM,  .RdW,
-    .RegWriteE, .RegWriteM, .RegWriteW,
-    .ValidE, .ValidM, .ValidW,
+    .RdM,
+    .RegWriteE, .RegWriteM,
+    .ValidE, .ValidM,
     .MemReadE,
     .CSRInE,
     .MulStallE,

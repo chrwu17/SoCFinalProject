@@ -5,9 +5,9 @@
  
 module hazard (
     input   logic [4:0] Rs1D, Rs2D,
-    input   logic [4:0] RdE, RdM, RdW,
-    input   logic       RegWriteE, RegWriteM, RegWriteW,
-    input   logic       ValidE, ValidM, ValidW, 
+    input   logic [4:0] RdE, RdM,
+    input   logic       RegWriteE, RegWriteM,
+    input   logic       ValidE, ValidM, 
     input   logic       MemReadE,
     input   logic       CSRInE,
     input   logic       MulStallE,
